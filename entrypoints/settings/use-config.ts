@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { DEFAULT_PROMPT } from '../../src/shared/constants';
+import { DEFAULT_PROMPT, getEngineLabel } from '../../src/shared/constants';
 import { exportToYaml, importFromYaml, downloadYaml, selectYamlFile } from '../../src/shared/config-import-export';
-import { createDefaultGroup, generateId, isDefaultGroup, normalizeConfig } from '../../src/shared/config-core';
+import { createDefaultAiConfig, createDefaultGroup, generateId, isDefaultGroup, normalizeConfig } from '../../src/shared/config-core';
 import { saveConfig as persistConfig } from '../../src/shared/config-storage';
-import type { Rule, RuleConfig, RuleGroup } from '../../src/shared/types';
+import type { AIEngine, Rule, RuleConfig, RuleGroup } from '../../src/shared/types';
 
 export function useConfig() {
-  const [config, setConfig] = useState<RuleConfig>({ ruleGroups: [] });
+  const [config, setConfig] = useState<RuleConfig>({
+    ai: createDefaultAiConfig(),
+    ruleGroups: [],
+  });
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
 
@@ -21,7 +24,10 @@ export function useConfig() {
       setConfig(normalized);
     } catch (error) {
       console.error('Failed to load config:', error);
-      setConfig({ ruleGroups: [createDefaultGroup()] });
+      setConfig({
+        ai: createDefaultAiConfig(),
+        ruleGroups: [createDefaultGroup()],
+      });
     } finally {
       setLoading(false);
     }
@@ -176,10 +182,11 @@ export function useConfig() {
   const importConfig = useCallback(async () => {
     try {
       const yamlContent = await selectYamlFile();
-      const importedGroups = importFromYaml(yamlContent);
+      const importedConfig = importFromYaml(yamlContent);
       const defaultGroup = config.ruleGroups.find(g => g.isDefault);
       const newConfig = {
-        ruleGroups: defaultGroup ? [defaultGroup, ...importedGroups] : importedGroups
+        ai: importedConfig.ai,
+        ruleGroups: defaultGroup ? [defaultGroup, ...importedConfig.ruleGroups] : importedConfig.ruleGroups,
       };
       await saveConfig(newConfig);
       setConfig(newConfig);
@@ -189,6 +196,39 @@ export function useConfig() {
       showStatus('导入失败');
     }
   }, [config, saveConfig, showStatus]);
+
+  const updateAIEngine = useCallback((engine: AIEngine) => {
+    setConfig((prev) => {
+      const newConfig = {
+        ...prev,
+        ai: {
+          ...prev.ai,
+          engine,
+        },
+      };
+      saveConfig(newConfig);
+      showStatus(`已切换到 ${getEngineLabel(engine)}`);
+      return newConfig;
+    });
+  }, [saveConfig, showStatus]);
+
+  const updateEngineWarmup = useCallback((engine: AIEngine, enabled: boolean) => {
+    setConfig((prev) => {
+      const newConfig = {
+        ...prev,
+        ai: {
+          ...prev.ai,
+          warmup: {
+            ...prev.ai.warmup,
+            [engine]: enabled,
+          },
+        },
+      };
+      saveConfig(newConfig);
+      showStatus(`${getEngineLabel(engine)} 预热${enabled ? '已开启' : '已关闭'}`);
+      return newConfig;
+    });
+  }, [saveConfig, showStatus]);
 
   return {
     config,
@@ -204,6 +244,8 @@ export function useConfig() {
     reorderGroups,
     reorderRules,
     exportConfig,
-    importConfig
+    importConfig,
+    updateAIEngine,
+    updateEngineWarmup,
   };
 }

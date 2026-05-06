@@ -1,35 +1,45 @@
-import { FILL_DELAY_MS, GEMINI_URL } from '../../constants';
+import { FILL_DELAY_MS, getEngineHomeUrl } from '../../constants';
+import type { AIEngine } from '../../../shared/types';
 import {
-  clearGeminiReadyState,
-  installGeminiReadyTracker,
-  waitForGeminiTabReadyState,
-} from '../../gemini-ready-tracker';
+  clearTabReadyStateByEngine,
+  installEngineReadyTracker,
+  waitForEngineTabReadyState,
+} from '../../engine-ready-tracker';
 import { activateTab, focusWindow } from '../../window-utils';
 import { WarmResourceStore } from '../warm-resource-store';
 import type { WarmItem } from '../types';
 import { BaseWarmProvider } from './base-warm-provider';
 
 class FirefoxHiddenTabWarmProvider extends BaseWarmProvider {
+  private _engine: AIEngine;
   private _isCreating: boolean;
+  private _isDisposed: boolean;
   private _fillTimer: ReturnType<typeof setTimeout> | null;
   private _store: WarmResourceStore;
+  private _onTabRemoved: (removedTabId: number) => Promise<void>;
 
-  constructor(store = new WarmResourceStore()) {
+  constructor(engine: AIEngine = 'gemini', store = new WarmResourceStore()) {
     super();
-    installGeminiReadyTracker();
+    installEngineReadyTracker();
+    this._engine = engine;
     this._isCreating = false;
+    this._isDisposed = false;
     this._fillTimer = null;
     this._store = store;
+    this._onTabRemoved = async (removedTabId: number) => {
+      await this._handleWarmSurfaceRemoved(removedTabId);
+    };
     this._init();
   }
 
   _init() {
-    browser.tabs.onRemoved.addListener(async (removedTabId) => {
-      await this._handleWarmSurfaceRemoved(removedTabId);
-    });
+    browser.tabs.onRemoved.addListener(this._onTabRemoved);
   }
 
   _scheduleEnsureReady(delayMs = FILL_DELAY_MS) {
+    if (this._isDisposed) {
+      return;
+    }
     if (this._fillTimer) {
       clearTimeout(this._fillTimer);
     }
@@ -88,6 +98,9 @@ class FirefoxHiddenTabWarmProvider extends BaseWarmProvider {
   }
 
   protected async ensureFilled() {
+    if (this._isDisposed) {
+      return;
+    }
     if (this.warmItem) {
       return;
     }
@@ -144,7 +157,7 @@ class FirefoxHiddenTabWarmProvider extends BaseWarmProvider {
   }
 
   async _createHiddenTab() {
-    if (this._isCreating) return;
+    if (this._isDisposed || this._isCreating) return;
 
     this._isCreating = true;
     try {
@@ -154,7 +167,7 @@ class FirefoxHiddenTabWarmProvider extends BaseWarmProvider {
         return;
       }
 
-      const tab = await browser.tabs.create({ url: GEMINI_URL, active: false });
+      const tab = await browser.tabs.create({ url: getEngineHomeUrl(this._engine), active: false });
       if (!tab?.id) {
         return;
       }
@@ -167,9 +180,9 @@ class FirefoxHiddenTabWarmProvider extends BaseWarmProvider {
         return;
       }
 
-      const isReady = await waitForGeminiTabReadyState(tab.id);
+      const isReady = await waitForEngineTabReadyState(this._engine, tab.id);
       if (!isReady) {
-        clearGeminiReadyState(tab.id);
+        clearTabReadyStateByEngine(this._engine, tab.id);
         await browser.tabs.remove(tab.id);
         await this._store.clear();
         return;
@@ -179,6 +192,33 @@ class FirefoxHiddenTabWarmProvider extends BaseWarmProvider {
     } finally {
       this._isCreating = false;
     }
+  }
+
+  async close() {
+    if (this._fillTimer) {
+      clearTimeout(this._fillTimer);
+      this._fillTimer = null;
+    }
+    const item = await this._getStoredWarmItem();
+    if (typeof item?.tabId === 'number') {
+      try {
+        await browser.tabs.remove(item.tabId);
+      } catch {
+        // noop
+      }
+    }
+    this.clearInMemoryWarmItem();
+    await this._store.clear();
+    this.setWarmState('idle');
+  }
+
+  async dispose() {
+    if (this._isDisposed) {
+      return;
+    }
+    this._isDisposed = true;
+    browser.tabs.onRemoved.removeListener(this._onTabRemoved);
+    await this.close();
   }
 }
 

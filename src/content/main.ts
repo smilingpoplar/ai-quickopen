@@ -1,4 +1,15 @@
-import { GEMINI_CONTENT_READY } from '../background/gemini-ready-tracker';
+import { ENGINE_CONTENT_READY } from '../background/engine-ready-tracker';
+import type { AIEngine } from '../shared/types';
+
+function detectEngine(hostname: string): AIEngine | null {
+  if (hostname === 'gemini.google.com') return 'gemini';
+  if (hostname === 'grok.com') return 'grok';
+  return null;
+}
+
+function getEditorSelector(): string {
+  return 'div[contenteditable="true"]';
+}
 
 function waitForElement(selector: string, timeout = 10000): Promise<Element> {
   return new Promise((resolve, reject) => {
@@ -51,30 +62,39 @@ function simulateEnter(element: Element): void {
   );
 }
 
-async function runAutoSubmit(query: string): Promise<void> {
-  if (!query) return;
+async function runAutoSubmit(query: string): Promise<boolean> {
+  if (!query) return false;
 
   try {
-    const editor = await waitForElement('div[contenteditable="true"]', 15000);
+    const editor = await waitForElement(getEditorSelector(), 15000);
 
     (editor as HTMLElement).focus();
     await delay(100);
     simulateInput(editor, query);
     await delay(100);
     simulateEnter(editor);
+    return true;
   } catch (error) {
     console.error('自动发送失败:', error);
+    return false;
   }
 }
 
-export default function installGeminiMessageListener(): void {
-  void browser.runtime.sendMessage({ type: GEMINI_CONTENT_READY }).catch(() => undefined);
+export default function installEngineMessageListener(): void {
+  const engine = detectEngine(window.location.hostname);
+  if (!engine) return;
 
-  browser.runtime.onMessage.addListener((message: { type?: string; queryText?: string }) => {
-    if (message.type === 'GEMINI_QUERY') {
-      void runAutoSubmit(message.queryText || '');
+  void browser.runtime.sendMessage({ type: ENGINE_CONTENT_READY, engine }).catch(() => undefined);
+
+  browser.runtime.onMessage.addListener((message: { type?: string; queryText?: string; engine?: AIEngine }) => {
+    if (message.type !== 'AI_QUERY') {
+      return undefined;
     }
 
-    return undefined;
+    if (message.engine && message.engine !== engine) {
+      return undefined;
+    }
+
+    return runAutoSubmit(message.queryText || '').then((ok) => ({ ok }));
   });
 }

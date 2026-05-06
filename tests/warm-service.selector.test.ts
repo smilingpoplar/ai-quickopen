@@ -31,7 +31,7 @@ test('warm service should select chrome warm tab provider in chrome', async () =
   try {
     const moduleUrl = `${pathToFileURL(path.resolve('src/background/warm/warm-service.ts')).href}?selector-chrome=${Date.now()}`;
     const { createWarmProvider } = await import(moduleUrl);
-    const provider = createWarmProvider({
+    const provider = createWarmProvider('gemini', {
       isChrome: true,
       isFirefox: false,
       canHideTabs: false,
@@ -49,7 +49,7 @@ test('warm service should select firefox hidden-tab provider in firefox with tab
   try {
     const moduleUrl = `${pathToFileURL(path.resolve('src/background/warm/warm-service.ts')).href}?selector-firefox=${Date.now()}`;
     const { createWarmProvider } = await import(moduleUrl);
-    const provider = createWarmProvider({
+    const provider = createWarmProvider('gemini', {
       isChrome: false,
       isFirefox: true,
       canHideTabs: true,

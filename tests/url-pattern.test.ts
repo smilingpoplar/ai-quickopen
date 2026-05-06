@@ -8,6 +8,8 @@ import {
 } from '../src/shared/url-pattern';
 import { DEFAULT_PROMPT } from '../src/shared/constants';
 
+const ai = { engine: 'gemini', warmup: { gemini: true, grok: false } };
+
 test('normalizeUrlPatternInput should auto-complete bare domains', () => {
   assert.equal(normalizeUrlPatternInput('github.com'), '*://github.com/*');
   assert.equal(normalizeUrlPatternInput('*.youtube.com'), '*://*.youtube.com/*');
@@ -42,6 +44,7 @@ test('urlMatchPatternToRegex should return null for invalid pattern', () => {
 
 test('findMatchingGroup should return first matched group by order', () => {
   const config = {
+    ai,
     ruleGroups: [
       {
         id: '1',
@@ -73,6 +76,7 @@ test('findMatchingGroup should return first matched group by order', () => {
 
 test('findMatchingGroup should fallback to default group', () => {
   const config = {
+    ai,
     ruleGroups: [
       {
         id: '1',
@@ -96,6 +100,7 @@ test('findMatchingGroup should fallback to default group', () => {
 
 test('findMatchingGroup should fallback to hardcoded default when no default group', () => {
   const config = {
+    ai,
     ruleGroups: [
       {
         id: '1',

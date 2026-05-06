@@ -1,12 +1,16 @@
 import yaml from 'js-yaml';
-import { DEFAULT_PROMPT } from './constants';
-import { generateId } from './config-core';
-import type { RuleConfig, RuleGroup } from './types';
+import { DEFAULT_ENGINE_WARMUP, DEFAULT_PROMPT, getDefaultWarmupForEngine } from './constants';
+import { createDefaultAiConfig, generateId } from './config-core';
+import type { AIEngine, RuleConfig, RuleGroup } from './types';
 
 export function exportToYaml(config: RuleConfig): string {
   const customGroups = config.ruleGroups.filter((group) => !group.isDefault);
 
   const exportData = {
+    ai: {
+      engine: config.ai.engine,
+      warmup: { ...config.ai.warmup },
+    },
     ruleGroups: customGroups
       .map((group) => ({
         prompt: group.prompt,
@@ -23,23 +27,76 @@ export function exportToYaml(config: RuleConfig): string {
   return yaml.dump(exportData, { indent: 2, lineWidth: -1 });
 }
 
-export function importFromYaml(yamlString: string): RuleGroup[] {
+function normalizeImportedEngine(engine: unknown): AIEngine {
+  if (typeof engine !== 'string') {
+    return 'gemini';
+  }
+
+  const normalized = engine.trim();
+  return normalized || 'gemini';
+}
+
+function normalizeImportedWarmup(warmup: unknown) {
+  const source = typeof warmup === 'object' && warmup !== null
+    ? warmup as Record<string, unknown>
+    : {};
+
+  const normalized: Record<string, boolean> = {};
+  for (const [engine, value] of Object.entries(source)) {
+    if (typeof value === 'boolean') {
+      normalized[engine] = value;
+    }
+  }
+
+  if (typeof normalized.gemini !== 'boolean') {
+    normalized.gemini = DEFAULT_ENGINE_WARMUP.gemini;
+  }
+  if (typeof normalized.grok !== 'boolean') {
+    normalized.grok = DEFAULT_ENGINE_WARMUP.grok;
+  }
+
+  return normalized;
+}
+
+export function importFromYaml(yamlString: string): RuleConfig {
   const data = yaml.load(yamlString);
 
   if (!data || typeof data !== 'object' || !Array.isArray((data as RuleConfig).ruleGroups)) {
     throw new Error('无效的 YAML 格式');
   }
 
-  return (data as RuleConfig).ruleGroups.map((group) => ({
-    id: generateId(),
-    prompt: group.prompt || DEFAULT_PROMPT,
-    cssSelector: group.cssSelector || '',
-    rules: (group.rules || []).map((rule) => ({
+  const raw = data as {
+    ai?: {
+      engine?: unknown;
+      warmup?: unknown;
+    };
+    ruleGroups: RuleGroup[];
+  };
+
+  const importedAi = raw.ai;
+  const fallbackAi = createDefaultAiConfig();
+  const engine = normalizeImportedEngine(importedAi?.engine ?? fallbackAi.engine);
+  const warmup = normalizeImportedWarmup(importedAi?.warmup ?? fallbackAi.warmup);
+  if (typeof warmup[engine] !== 'boolean') {
+    warmup[engine] = getDefaultWarmupForEngine(engine);
+  }
+
+  return {
+    ai: {
+      engine,
+      warmup,
+    },
+    ruleGroups: raw.ruleGroups.map((group) => ({
       id: generateId(),
-      urlPattern: rule.urlPattern || '',
-      cssSelector: rule.cssSelector || '',
+      prompt: group.prompt || DEFAULT_PROMPT,
+      cssSelector: group.cssSelector || '',
+      rules: (group.rules || []).map((rule) => ({
+        id: generateId(),
+        urlPattern: rule.urlPattern || '',
+        cssSelector: rule.cssSelector || '',
+      })),
     })),
-  }));
+  };
 }
 
 export function downloadYaml(content: string, filename: string): void {

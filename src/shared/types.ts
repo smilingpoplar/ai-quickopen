@@ -4,6 +4,15 @@ export type Rule = {
   cssSelector: string;
 };
 
+export type AIEngine = string;
+
+export type EngineWarmupConfig = Record<string, boolean>;
+
+export type AiConfig = {
+  engine: AIEngine;
+  warmup: EngineWarmupConfig;
+};
+
 export type RuleGroup = {
   id: string;
   prompt: string;
@@ -13,6 +22,7 @@ export type RuleGroup = {
 };
 
 export type RuleConfig = {
+  ai: AiConfig;
   ruleGroups: RuleGroup[];
 };
 

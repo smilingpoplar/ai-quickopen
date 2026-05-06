@@ -13,9 +13,10 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
+import { AI_ENGINE_LABELS, AI_ENGINES } from '../../src/shared/constants';
 import { useConfig } from './use-config';
 import { RuleGroup } from './components/RuleGroup';
-import type { RuleGroup as RuleGroupType } from '../../src/shared/types';
+import type { AIEngine, RuleGroup as RuleGroupType } from '../../src/shared/types';
 
 export function App() {
   const {
@@ -32,7 +33,9 @@ export function App() {
     reorderGroups,
     reorderRules,
     exportConfig,
-    importConfig
+    importConfig,
+    updateAIEngine,
+    updateEngineWarmup,
   } = useConfig();
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -138,15 +141,42 @@ export function App() {
     <div className="container">
       <div className="header">
         <div className="header-title">
-          <h1>规则设置</h1>
-          <p className="subtitle">为不同网址分配提示词和可选 CSS 提取规则</p>
+          <h1>设置</h1>
         </div>
         <div className="header-actions">
           <button className="action-btn" onClick={importConfig}>导入</button>
           <button className="action-btn" onClick={exportConfig}>导出</button>
         </div>
       </div>
-      <p className="hint">按规则组顺序匹配：先命中的组会生效。默认组用于兜底。</p>
+      <div className="engine-toolbar">
+        <div className="engine-card">
+          <div className="engine-row">
+            <label className="engine-label" htmlFor="engineSelect">默认引擎</label>
+            <select
+              id="engineSelect"
+              className="engine-select"
+              value={config.ai.engine}
+              onChange={(event) => updateAIEngine(event.target.value as AIEngine)}
+            >
+              {AI_ENGINES.map((engine) => (
+                <option key={engine} value={engine}>
+                  {AI_ENGINE_LABELS[engine]}
+                </option>
+              ))}
+            </select>
+            <label className="warmup-item engine-inline-warmup">
+              <input
+                type="checkbox"
+                checked={Boolean(config.ai.warmup[config.ai.engine])}
+                onChange={(event) => updateEngineWarmup(config.ai.engine, event.target.checked)}
+              />
+              <span>预热</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <p className="rules-title">规则设置</p>
+      <p className="subtitle">为不同网址分配提示词和可选 CSS 提取规则</p>
 
       <DndContext
         sensors={sensors}

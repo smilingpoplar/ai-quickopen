@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-test('waitForGeminiTabReadyState should resolve when matching ready message arrives', async () => {
+test('waitForEngineTabReadyState should resolve when matching ready message arrives', async () => {
   const originalBrowser = (globalThis as any).browser;
 
   const listeners: Record<string, any> = {
@@ -28,16 +28,16 @@ test('waitForGeminiTabReadyState should resolve when matching ready message arri
   };
 
   try {
-    const moduleUrl = `${pathToFileURL(path.resolve('src/background/gemini-ready-tracker.ts')).href}?wait-ready=${Date.now()}`;
+    const moduleUrl = `${pathToFileURL(path.resolve('src/background/engine-ready-tracker.ts')).href}?wait-ready=${Date.now()}`;
     const {
-      GEMINI_CONTENT_READY,
-      installGeminiReadyTracker,
-      waitForGeminiTabReadyState,
+      ENGINE_CONTENT_READY,
+      installEngineReadyTracker,
+      waitForEngineTabReadyState,
     } = await import(moduleUrl);
 
-    installGeminiReadyTracker();
-    const readyPromise = waitForGeminiTabReadyState(701, 500);
-    listeners.onMessage({ type: GEMINI_CONTENT_READY }, { tab: { id: 701 } });
+    installEngineReadyTracker();
+    const readyPromise = waitForEngineTabReadyState('gemini', 701, 500);
+    listeners.onMessage({ type: ENGINE_CONTENT_READY }, { tab: { id: 701 } });
     const isReady = await readyPromise;
 
     assert.equal(isReady, true);
@@ -46,7 +46,7 @@ test('waitForGeminiTabReadyState should resolve when matching ready message arri
   }
 });
 
-test('waitForGeminiTabReadyState should resolve false on timeout or removal', async () => {
+test('waitForEngineTabReadyState should resolve false on timeout or removal', async () => {
   const originalBrowser = (globalThis as any).browser;
 
   const listeners: Record<string, any> = {
@@ -71,20 +71,20 @@ test('waitForGeminiTabReadyState should resolve false on timeout or removal', as
   };
 
   try {
-    const moduleUrl = `${pathToFileURL(path.resolve('src/background/gemini-ready-tracker.ts')).href}?install-ready=${Date.now()}`;
+    const moduleUrl = `${pathToFileURL(path.resolve('src/background/engine-ready-tracker.ts')).href}?install-ready=${Date.now()}`;
     const {
-      installGeminiReadyTracker,
-      waitForGeminiTabReadyState,
+      installEngineReadyTracker,
+      waitForEngineTabReadyState,
     } = await import(moduleUrl);
 
-    installGeminiReadyTracker();
+    installEngineReadyTracker();
     assert.equal(typeof listeners.onRemoved, 'function');
 
-    const removedPromise = waitForGeminiTabReadyState(42, 500);
+    const removedPromise = waitForEngineTabReadyState('gemini', 42, 500);
     listeners.onRemoved(42);
     assert.equal(await removedPromise, false);
 
-    const timeoutResult = await waitForGeminiTabReadyState(43, 10);
+    const timeoutResult = await waitForEngineTabReadyState('gemini', 43, 10);
     assert.equal(timeoutResult, false);
   } finally {
     (globalThis as any).browser = originalBrowser;

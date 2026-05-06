@@ -1,10 +1,10 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
-import installGeminiMessageListener from '../src/content/main';
+import installEngineMessageListener from '../src/content/main';
 
 export default defineContentScript({
-  matches: ['https://gemini.google.com/*'],
+  matches: ['https://gemini.google.com/*', 'https://grok.com/*'],
   runAt: 'document_start',
   main() {
-    installGeminiMessageListener();
+    installEngineMessageListener();
   },
 });

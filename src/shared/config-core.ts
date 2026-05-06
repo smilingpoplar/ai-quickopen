@@ -1,5 +1,5 @@
-import { DEFAULT_PROMPT } from './constants';
-import type { RuleConfig, RuleGroup } from './types';
+import { DEFAULT_AI_ENGINE, DEFAULT_ENGINE_WARMUP, DEFAULT_PROMPT, getDefaultWarmupForEngine } from './constants';
+import type { AiConfig, AIEngine, EngineWarmupConfig, RuleConfig, RuleGroup } from './types';
 
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -19,13 +19,58 @@ export function createDefaultGroup(): RuleGroup {
   };
 }
 
-export function normalizeConfig(config: unknown): RuleConfig {
-  if (Array.isArray(config)) {
-    return { ruleGroups: [createDefaultGroup()] };
+export function createDefaultAiConfig(): AiConfig {
+  return {
+    engine: DEFAULT_AI_ENGINE,
+    warmup: { ...DEFAULT_ENGINE_WARMUP },
+  };
+}
+
+function normalizeEngine(engine: unknown): AIEngine {
+  if (typeof engine !== 'string') {
+    return DEFAULT_AI_ENGINE;
   }
 
-  if (typeof config === 'object' && config !== null && 'ruleGroups' in config) {
-    const source = (config as RuleConfig).ruleGroups ?? [];
+  const normalized = engine.trim();
+  return normalized || DEFAULT_AI_ENGINE;
+}
+
+function normalizeWarmup(warmup: unknown): EngineWarmupConfig {
+  const source = typeof warmup === 'object' && warmup !== null
+    ? warmup as Record<string, unknown>
+    : {};
+
+  const normalized: EngineWarmupConfig = {};
+  for (const [engine, value] of Object.entries(source)) {
+    if (typeof value === 'boolean') {
+      normalized[engine] = value;
+    }
+  }
+
+  if (typeof normalized.gemini !== 'boolean') {
+    normalized.gemini = DEFAULT_ENGINE_WARMUP.gemini;
+  }
+  if (typeof normalized.grok !== 'boolean') {
+    normalized.grok = DEFAULT_ENGINE_WARMUP.grok;
+  }
+
+  return normalized;
+}
+
+export function normalizeConfig(config: unknown): RuleConfig {
+  if (Array.isArray(config)) {
+    return {
+      ai: createDefaultAiConfig(),
+      ruleGroups: [createDefaultGroup()],
+    };
+  }
+
+  if (typeof config === 'object' && config !== null) {
+    const sourceConfig = config as Partial<RuleConfig> & {
+      engine?: unknown;
+      warmup?: unknown;
+    };
+    const source = sourceConfig.ruleGroups ?? [];
     const groups: RuleGroup[] = source.map((group) => ({
       ...group,
       cssSelector: group.cssSelector || '',
@@ -40,8 +85,27 @@ export function normalizeConfig(config: unknown): RuleConfig {
       groups.push(createDefaultGroup());
     }
 
-    return { ruleGroups: groups };
+    const sourceAi = typeof sourceConfig.ai === 'object' && sourceConfig.ai !== null
+      ? sourceConfig.ai
+      : null;
+
+    const engine = normalizeEngine(sourceAi?.engine ?? sourceConfig.engine);
+    const warmup = normalizeWarmup(sourceAi?.warmup ?? sourceConfig.warmup);
+    if (typeof warmup[engine] !== 'boolean') {
+      warmup[engine] = getDefaultWarmupForEngine(engine);
+    }
+
+    return {
+      ai: {
+        engine,
+        warmup,
+      },
+      ruleGroups: groups,
+    };
   }
 
-  return { ruleGroups: [createDefaultGroup()] };
+  return {
+    ai: createDefaultAiConfig(),
+    ruleGroups: [createDefaultGroup()],
+  };
 }

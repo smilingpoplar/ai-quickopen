@@ -22,20 +22,60 @@
     @apply mb-2 flex items-start justify-between gap-3;
   }
 
+  .header-title {
+    @apply mb-2;
+  }
+
   .header-title h1 {
     @apply m-0 text-xl font-semibold leading-snug tracking-[0.01em] text-slate-800;
   }
 
   .subtitle {
-    @apply mt-1 text-[13px] leading-5 text-slate-500;
+    @apply mt-1 mb-3 text-[13px] leading-5 text-slate-500;
+  }
+
+  .rules-title {
+    @apply m-0 text-sm font-semibold text-slate-700;
   }
 
   .header-actions {
     @apply flex flex-wrap gap-2;
   }
 
+  .engine-toolbar {
+    @apply mb-3 flex items-center gap-2;
+  }
+
   .hint {
     @apply mb-3.5 text-xs leading-5 text-slate-500;
+  }
+
+  .engine-card {
+    @apply flex-1 rounded-lg border border-slate-200 bg-slate-50 p-3;
+  }
+
+  .engine-row {
+    @apply flex flex-wrap items-center gap-3;
+  }
+
+  .engine-label {
+    @apply text-sm font-medium text-slate-700;
+  }
+
+  .engine-select {
+    @apply h-9 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-800 outline-none;
+  }
+
+  .engine-select:focus {
+    @apply border-blue-600 ring-2 ring-blue-100;
+  }
+
+  .warmup-item {
+    @apply inline-flex cursor-pointer items-center gap-1.5 text-xs text-slate-700;
+  }
+
+  .engine-inline-warmup {
+    @apply ml-1;
   }
 
   .rules-container {
@@ -200,6 +240,10 @@
 
     .header-actions {
       @apply w-full;
+    }
+
+    .engine-toolbar {
+      @apply flex-col items-stretch;
     }
 
     .action-btn {

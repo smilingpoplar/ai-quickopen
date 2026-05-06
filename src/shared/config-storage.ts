@@ -1,4 +1,4 @@
-import { createDefaultGroup, normalizeConfig } from './config-core';
+import { createDefaultAiConfig, createDefaultGroup, normalizeConfig } from './config-core';
 import type { RuleConfig } from './types';
 
 export async function loadConfig(): Promise<RuleConfig> {
@@ -7,7 +7,10 @@ export async function loadConfig(): Promise<RuleConfig> {
     return normalizeConfig(result.ruleConfig || { ruleGroups: [] });
   } catch (error) {
     console.error('Failed to load config:', error);
-    return { ruleGroups: [createDefaultGroup()] };
+    return {
+      ai: createDefaultAiConfig(),
+      ruleGroups: [createDefaultGroup()],
+    };
   }
 }
 

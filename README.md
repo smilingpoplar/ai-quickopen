@@ -1,14 +1,15 @@
-# Gemini 快捷打开
+# AI网站快捷打开
 
-- 在后台预热Gemini网页，加快打开速度
-- 点击工具栏图标 → 将当前网页发送给Gemini分析
-- 在插件选项中，添加Prompt提示词、URL规则、CSS选择器（可选）。CSS选择器为空则发送URL，非空则同时抽取文本。
+- 点击工具栏图标 -> 将当前网页发送给AI网站分析
+- 支持`?q={query}`查询参数，用AI网站搜索
+- 可在后台预热AI网站（如Gemini），加快打开速度
+- 在插件选项中，添加URL规则、CSS选择器（可选）、Prompt提示词。CSS选择器为空时发送URL，非空时抽取元素文本。
 
 ## 安装
 
 ```bash
-git clone https://github.com/smilingpoplar/gemini-quickopen.git
-cd gemini-quickopen
+git clone https://github.com/smilingpoplar/ai-quickopen.git
+cd ai-quickopen
 pnpm install
 pnpm build
 ```

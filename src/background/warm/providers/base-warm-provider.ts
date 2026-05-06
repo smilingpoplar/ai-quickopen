@@ -153,6 +153,8 @@ abstract class BaseWarmProvider implements WarmProvider {
   protected abstract ensureFilled(): Promise<void>;
   protected abstract consumeWarmItem(item: WarmItem): Promise<WarmItem | null>;
   protected abstract persistWarmItem(item: WarmItem): Promise<void>;
+  abstract close(): Promise<void>;
+  abstract dispose(): Promise<void>;
 }
 
 export { BaseWarmProvider };

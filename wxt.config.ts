@@ -1,4 +1,10 @@
 import { defineConfig } from 'wxt';
+import { readFileSync } from 'node:fs';
+
+const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+  description: string;
+  version: string;
+};
 
 export default defineConfig({
   outDir: 'dist',
@@ -13,13 +19,13 @@ export default defineConfig({
     }
 
     return {
-      name: 'Gemini 快捷打开',
-      version: '1.1.0',
-      description: '点击插件图标，将当前网页 URL 发送到 Gemini 进行分析',
+      name: 'AI 快捷打开',
+      version: '1.2.0',
+      description: '点击插件图标，将当前网页发送到AI引擎分析',
       permissions,
-      host_permissions: ['https://gemini.google.com/*'],
+      host_permissions: ['https://gemini.google.com/*', 'https://grok.com/*'],
       action: {
-        default_title: '在 Gemini 中打开当前页面',
+        default_title: '在AI引擎中打开当前页面',
         default_icon: {
           '16': 'icons/icon16.png',
           '32': 'icons/icon32.png',
@@ -35,13 +41,13 @@ export default defineConfig({
         '128': 'icons/icon128.png',
       },
       commands: {
-        'open-gemini': {
-          description: '在 Gemini 中打开当前页面',
+        'open-engine': {
+          description: '在当前AI引擎中打开当前页面',
         },
       },
       browser_specific_settings: {
         gecko: {
-          id: 'gemini-quickopen@quickopen',
+          id: 'ai-quickopen@quickopen',
           strict_min_version: '128.0',
         },
       },

@@ -29,7 +29,7 @@ test('should create warm tab in normal window and collapse its tab group', async
       create: async (config: any) => {
         calls.tabsCreate.push(config);
         queueMicrotask(() => {
-          listeners.onMessage?.({ type: 'GEMINI_CONTENT_READY' }, { tab: { id: 1002 } });
+          listeners.onMessage?.({ type: 'ENGINE_CONTENT_READY', engine: 'gemini' }, { tab: { id: 1002 } });
         });
         return { id: 1002, windowId: 1, url: config.url };
       },
@@ -122,7 +122,7 @@ test('should reuse dedicated warm tab group when it already exists', async () =>
       onRemoved: { addListener: (handler: unknown) => { listeners.onTabRemoved = handler; } },
       create: async () => {
         queueMicrotask(() => {
-          listeners.onMessage?.({ type: 'GEMINI_CONTENT_READY' }, { tab: { id: 3001 } });
+          listeners.onMessage?.({ type: 'ENGINE_CONTENT_READY', engine: 'gemini' }, { tab: { id: 3001 } });
         });
         return { id: 3001, windowId: 1, url: 'https://gemini.google.com/app' };
       },
@@ -207,7 +207,7 @@ test('should ungroup warm tab before activating it on consume', async () => {
       onRemoved: { addListener: (handler: unknown) => { listeners.onTabRemoved = handler; } },
       create: async () => {
         queueMicrotask(() => {
-          listeners.onMessage?.({ type: 'GEMINI_CONTENT_READY' }, { tab: { id: 777 } });
+          listeners.onMessage?.({ type: 'ENGINE_CONTENT_READY', engine: 'gemini' }, { tab: { id: 777 } });
         });
         return { id: 777, windowId: 5, url: 'https://gemini.google.com/app' };
       },
@@ -242,7 +242,10 @@ test('should ungroup warm tab before activating it on consume', async () => {
 
     assert.equal(consumed?.tabId, 777);
     assert.deepEqual(calls.tabsUngroup[0], 777);
-    assert.deepEqual(calls.tabsMove[0], { tabId: 777, config: { index: -1 } });
+    const movedToEnd = calls.tabsMove.some(
+      (entry) => entry?.tabId === 777 && entry?.config?.index === -1,
+    );
+    assert.equal(movedToEnd, true);
     assert.deepEqual(calls.tabsUpdate[0], { tabId: 777, config: { active: true } });
     assert.deepEqual(calls.windowsUpdate[0], { windowId: 5, config: { focused: true } });
   } finally {

@@ -49,7 +49,7 @@ function createFirefoxBrowserMock({
           throw new Error('hide failed');
         }
         queueMicrotask(() => {
-          listeners.onMessage?.({ type: 'GEMINI_CONTENT_READY' }, { tab: { id: tabId } });
+          listeners.onMessage?.({ type: 'ENGINE_CONTENT_READY', engine: 'gemini' }, { tab: { id: tabId } });
         });
       },
       show: async (tabId: number) => {

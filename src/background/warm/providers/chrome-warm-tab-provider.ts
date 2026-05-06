@@ -1,14 +1,15 @@
-import { FILL_DELAY_MS, GEMINI_URL } from '../../constants';
+import { FILL_DELAY_MS, getEngineHomeUrl } from '../../constants';
+import type { AIEngine } from '../../../shared/types';
 import {
   activateTab,
   focusWindow,
   getWindows,
 } from '../../window-utils';
 import {
-  clearGeminiReadyState,
-  installGeminiReadyTracker,
-  waitForGeminiTabReadyState,
-} from '../../gemini-ready-tracker';
+  clearTabReadyStateByEngine,
+  installEngineReadyTracker,
+  waitForEngineTabReadyState,
+} from '../../engine-ready-tracker';
 import { WarmResourceStore } from '../warm-resource-store';
 import type { WarmItem } from '../types';
 import { BaseWarmProvider } from './base-warm-provider';
@@ -16,34 +17,52 @@ import { BaseWarmProvider } from './base-warm-provider';
 const WARM_TAB_GROUP_TITLE = 'W';
 const GROUP_RETRY_DELAYS_MS = [0, 50, 150];
 type BrowserTab = { id?: number; windowId?: number | null; index?: number };
+const WARM_LOG_PREFIX = '[warm:chrome-tab-group]';
 
 class ChromeWarmTabProvider extends BaseWarmProvider {
+  private _engine: AIEngine;
   private _isCreating: boolean;
+  private _isDisposed: boolean;
   private _fillTimer: ReturnType<typeof setTimeout> | null;
   private _store: WarmResourceStore;
+  private _onTabRemoved: (removedTabId: number) => Promise<void>;
 
-  constructor(store = new WarmResourceStore()) {
+  constructor(engine: AIEngine = 'gemini', store = new WarmResourceStore()) {
     super();
-    installGeminiReadyTracker();
+    installEngineReadyTracker();
+    this._engine = engine;
     this._isCreating = false;
+    this._isDisposed = false;
     this._fillTimer = null;
     this._store = store;
+    this._onTabRemoved = async (removedTabId: number) => {
+      await this._handleWarmTabRemoved(removedTabId);
+    };
     this._init();
   }
 
   _init() {
-    browser.tabs.onRemoved.addListener(async (removedTabId) => {
-      await this._handleWarmTabRemoved(removedTabId);
+    browser.tabs.onRemoved.addListener(this._onTabRemoved);
+    const browserAny = browser as any;
+    console.info(`${WARM_LOG_PREFIX} init`, {
+      engine: this._engine,
+      hasTabsGroup: typeof browserAny.tabs?.group === 'function',
+      hasTabGroupsUpdate: typeof browserAny.tabGroups?.update === 'function',
+      hasTabGroupsQuery: typeof browserAny.tabGroups?.query === 'function',
     });
   }
 
   _scheduleEnsureReady(delayMs = FILL_DELAY_MS) {
+    if (this._isDisposed) {
+      return;
+    }
     if (this._fillTimer) {
       clearTimeout(this._fillTimer);
     }
 
     this._fillTimer = setTimeout(() => {
       this._fillTimer = null;
+      console.info(`${WARM_LOG_PREFIX} retry ensureReady`, { delayMs });
       void this.requestEnsureReady();
     }, delayMs);
   }
@@ -95,6 +114,11 @@ class ChromeWarmTabProvider extends BaseWarmProvider {
   async _hideWarmTabViaGroup(tabId: number) {
     const browserAny = browser as any;
     if (typeof browserAny.tabs?.group !== 'function' || typeof browserAny.tabGroups?.update !== 'function') {
+      console.warn(`${WARM_LOG_PREFIX} grouping api unavailable`, {
+        tabId,
+        hasTabsGroup: typeof browserAny.tabs?.group === 'function',
+        hasTabGroupsUpdate: typeof browserAny.tabGroups?.update === 'function',
+      });
       return null;
     }
 
@@ -106,29 +130,39 @@ class ChromeWarmTabProvider extends BaseWarmProvider {
       try {
         const tab = await browser.tabs.get(tabId) as BrowserTab;
         let groupId: number | null = null;
+        console.info(`${WARM_LOG_PREFIX} try group`, { tabId, delayMs, windowId: tab.windowId });
         if (typeof browserAny.tabGroups?.query === 'function' && typeof tab.windowId === 'number') {
-          const groups = await browserAny.tabGroups.query({
-            windowId: tab.windowId,
-            title: WARM_TAB_GROUP_TITLE,
-          });
-          const existing = groups.find(group => typeof group.id === 'number') ?? null;
-          if (existing && typeof existing.id === 'number') {
-            groupId = await browserAny.tabs.group({ groupId: existing.id, tabIds: tabId });
+          try {
+            const groups = await browserAny.tabGroups.query({
+              windowId: tab.windowId,
+              title: WARM_TAB_GROUP_TITLE,
+            });
+            console.info(`${WARM_LOG_PREFIX} queried groups`, { tabId, count: groups.length });
+            const existing = groups.find(group => typeof group.id === 'number') ?? null;
+            if (existing && typeof existing.id === 'number') {
+              groupId = await browserAny.tabs.group({ groupId: existing.id, tabIds: tabId });
+              console.info(`${WARM_LOG_PREFIX} joined existing group`, { tabId, groupId });
+            }
+          } catch {
+            console.warn(`${WARM_LOG_PREFIX} tabGroups.query failed; fallback to new group`, { tabId });
           }
         }
         if (typeof groupId !== 'number') {
           groupId = await browserAny.tabs.group({ tabIds: tabId });
+          console.info(`${WARM_LOG_PREFIX} created new group`, { tabId, groupId });
         }
         await browserAny.tabGroups.update(groupId, {
           collapsed: true,
           title: WARM_TAB_GROUP_TITLE,
         });
+        console.info(`${WARM_LOG_PREFIX} updated group`, { tabId, groupId, collapsed: true, title: WARM_TAB_GROUP_TITLE });
         return groupId;
       } catch {
-        // retry on transient failures
+        console.warn(`${WARM_LOG_PREFIX} grouping attempt failed`, { tabId, delayMs });
       }
     }
 
+    console.error(`${WARM_LOG_PREFIX} grouping failed after retries`, { tabId });
     return null;
   }
 
@@ -162,6 +196,12 @@ class ChromeWarmTabProvider extends BaseWarmProvider {
     }
   }
 
+  async _ensureWarmTabGrouped(tabId: number) {
+    const groupId = await this._hideWarmTabViaGroup(tabId);
+    await this._moveWarmGroupToFront(tabId, groupId);
+    console.info(`${WARM_LOG_PREFIX} ensure grouped finished`, { tabId, groupId });
+  }
+
   async _ungroupWarmTab(tabId: number) {
     const browserAny = browser as any;
     if (typeof browserAny.tabs?.ungroup !== 'function') {
@@ -176,12 +216,13 @@ class ChromeWarmTabProvider extends BaseWarmProvider {
   }
 
   async _createWarmTab() {
-    if (this._isCreating) return;
+    if (this._isDisposed || this._isCreating) return;
 
     this._isCreating = true;
     try {
       const stored = await this._getStoredWarmItem();
       if (stored) {
+        await this._ensureWarmTabGrouped(stored.tabId);
         await this.setWarmItem(stored);
         return;
       }
@@ -189,27 +230,32 @@ class ChromeWarmTabProvider extends BaseWarmProvider {
       const windows = await getWindows();
       const targetWindow = windows.find((w) => w.focused) || windows[0] || null;
       if (!targetWindow?.id || typeof browser.tabs.create !== 'function') {
+        console.warn(`${WARM_LOG_PREFIX} no target normal window; schedule retry`);
+        this._scheduleEnsureReady(500);
         return;
       }
 
       let tab: BrowserTab | null = null;
       tab = await browser.tabs.create({
-        url: GEMINI_URL,
+        url: getEngineHomeUrl(this._engine),
         active: false,
         windowId: targetWindow.id,
         index: 0,
       });
+      console.info(`${WARM_LOG_PREFIX} created warm tab`, { tabId: tab?.id, windowId: tab?.windowId, engine: this._engine });
 
       if (!tab?.id) {
+        console.warn(`${WARM_LOG_PREFIX} created tab missing id; schedule retry`);
+        this._scheduleEnsureReady(500);
         return;
       }
 
-      const groupId = await this._hideWarmTabViaGroup(tab.id);
-      await this._moveWarmGroupToFront(tab.id, groupId);
+      await this._ensureWarmTabGrouped(tab.id);
 
-      const isReady = await waitForGeminiTabReadyState(tab.id);
+      const isReady = await waitForEngineTabReadyState(this._engine, tab.id);
       if (!isReady) {
-        clearGeminiReadyState(tab.id);
+        console.warn(`${WARM_LOG_PREFIX} tab not ready in time; removing`, { tabId: tab.id, engine: this._engine });
+        clearTabReadyStateByEngine(this._engine, tab.id);
         try {
           await browser.tabs.remove(tab.id);
         } catch {
@@ -219,17 +265,20 @@ class ChromeWarmTabProvider extends BaseWarmProvider {
       }
 
       await this.setWarmItem({ tabId: tab.id, windowId: tab.windowId ?? null });
+      console.info(`${WARM_LOG_PREFIX} warm tab ready`, { tabId: tab.id, windowId: tab.windowId, engine: this._engine });
     } finally {
       this._isCreating = false;
     }
   }
 
   protected async ensureFilled() {
-    if (this._isCreating) return;
+    if (this._isDisposed || this._isCreating) return;
     if (this.warmItem) return;
 
     const stored = await this._getStoredWarmItem();
     if (stored) {
+      console.info(`${WARM_LOG_PREFIX} restore stored warm tab`, { tabId: stored.tabId, windowId: stored.windowId });
+      await this._ensureWarmTabGrouped(stored.tabId);
       await this.setWarmItem(stored);
       return;
     }
@@ -275,6 +324,34 @@ class ChromeWarmTabProvider extends BaseWarmProvider {
       tabId: item.tabId,
       windowId: item.windowId,
     });
+  }
+
+  async close() {
+    if (this._fillTimer) {
+      clearTimeout(this._fillTimer);
+      this._fillTimer = null;
+    }
+    const item = await this._getStoredWarmItem();
+    if (typeof item?.tabId === 'number') {
+      console.info(`${WARM_LOG_PREFIX} close warm tab`, { tabId: item.tabId });
+      try {
+        await browser.tabs.remove(item.tabId);
+      } catch {
+        // noop
+      }
+    }
+    this.clearInMemoryWarmItem();
+    await this._store.clear();
+    this.setWarmState('idle');
+  }
+
+  async dispose() {
+    if (this._isDisposed) {
+      return;
+    }
+    this._isDisposed = true;
+    browser.tabs.onRemoved.removeListener(this._onTabRemoved);
+    await this.close();
   }
 }
 

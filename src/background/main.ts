@@ -1,21 +1,23 @@
-import { installGeminiReadyTracker } from './gemini-ready-tracker';
+import { installEngineReadyTracker } from './engine-ready-tracker';
+import { normalizeConfig } from '../shared/config-core';
 import { saveConfig, loadConfig } from '../shared/config-storage';
 import { warmService } from './warm/warm-service';
-import { openGeminiForCurrentTab, openGeminiForTab } from './use-cases/open-gemini-flow';
-import { reuseWarmTabForGeminiNavigation } from './use-cases/reuse-warm-tab-for-gemini-navigation';
+import { openAIEngineForCurrentTab, openAIEngineForTab } from './use-cases/open-engine-flow';
+import { reuseWarmTabForPrewarmNavigation } from './use-cases/reuse-warm-tab-for-prewarm-navigation';
 
 async function warmOnInstall() {
   const config = await loadConfig();
   await saveConfig(config);
-  await warmService.ensureReady();
+  await warmService.syncConfig(config);
 }
 
 async function warmOnStartup() {
-  await warmService.ensureReady();
+  const config = await loadConfig();
+  await warmService.syncConfig(config);
 }
 
 export async function bootstrapBackground(): Promise<void> {
-  installGeminiReadyTracker();
+  installEngineReadyTracker();
 
   browser.runtime.onInstalled.addListener(() => {
     void warmOnInstall();
@@ -25,20 +27,26 @@ export async function bootstrapBackground(): Promise<void> {
     void warmOnStartup();
   });
 
+  browser.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'sync' || !changes.ruleConfig) return;
+    const normalized = normalizeConfig(changes.ruleConfig.newValue || { ruleGroups: [] });
+    void warmService.syncConfig(normalized);
+  });
+
   // Chrome MV3 uses `action`, while Firefox MV2 uses `browserAction`.
   const actionApi = browser.action ?? browser.browserAction;
 
   actionApi?.onClicked.addListener(async (tab) => {
-    await openGeminiForTab(tab);
+    await openAIEngineForTab(tab);
   });
 
   browser.commands.onCommand.addListener(async (command) => {
-    if (command === 'open-gemini') {
-      await openGeminiForCurrentTab();
+    if (command === 'open-engine') {
+      await openAIEngineForCurrentTab();
     }
   });
 
-  browser.webNavigation.onCommitted.addListener(reuseWarmTabForGeminiNavigation);
+  browser.webNavigation.onCommitted.addListener(reuseWarmTabForPrewarmNavigation);
 
-  await warmService.ensureReady();
+  await warmOnStartup();
 }

@@ -1,6 +1,8 @@
-import { DEQUEUE_TIMEOUT_MS, GEMINI_URL } from '../constants';
+import { getDefaultWarmupForEngine } from '../../shared/constants';
+import { loadConfig } from '../../shared/config-storage';
+import { DEQUEUE_TIMEOUT_MS, getEngineHomeUrl, resolveEngine } from '../constants';
 import { warmService } from '../warm/warm-service';
-import { sendQueryToGeminiTab } from './open-gemini-flow';
+import { sendQueryToAITab } from './open-engine-flow';
 
 type NavigationSwapDetails = {
   frameId?: number;
@@ -16,7 +18,7 @@ type NavigationSwapDeps = {
   removeTab: typeof browser.tabs.remove;
   addTabRemovedListener: (listener: (tabId: number) => void) => void;
   removeTabRemovedListener: (listener: (tabId: number) => void) => void;
-  sendQuery: typeof sendQueryToGeminiTab;
+  sendQuery: typeof sendQueryToAITab;
 };
 
 const CLOSE_CONFIRM_TIMEOUT_MS = 120;
@@ -109,10 +111,18 @@ async function safeCloseQueryTab(queryTabId: number, deps: NavigationSwapDeps): 
   await closeWithConfirmation(queryTabId, CLOSE_RETRY_CONFIRM_TIMEOUT_MS, deps);
 }
 
-function createReuseWarmTabForGeminiNavigation(deps: NavigationSwapDeps) {
-  return async function reuseWarmTabForGeminiNavigation(details: NavigationSwapDetails) {
+function createReuseWarmTabForPrewarmNavigation(deps: NavigationSwapDeps) {
+  return async function reuseWarmTabForPrewarmNavigation(details: NavigationSwapDetails) {
     if (details.frameId !== 0) return;
-    if (!details.url?.startsWith('https://gemini.google.com')) return;
+    const config = await loadConfig();
+    const warmupEnabled = typeof config.ai.warmup[config.ai.engine] === 'boolean'
+      ? config.ai.warmup[config.ai.engine]
+      : getDefaultWarmupForEngine(config.ai.engine);
+    if (!warmupEnabled) return;
+
+    const dispatchEngine = resolveEngine(config.ai.engine);
+    const homeUrl = getEngineHomeUrl(dispatchEngine);
+    if (!details.url?.startsWith(homeUrl)) return;
 
     let queryText;
     try {
@@ -136,7 +146,7 @@ function createReuseWarmTabForGeminiNavigation(deps: NavigationSwapDeps) {
         await safeCloseQueryTab(queryTabId, deps);
       }
 
-      const sent = await deps.sendQuery(warmTabId, queryText);
+      const sent = await deps.sendQuery(warmTabId, queryText, 1, dispatchEngine);
       if (!sent) {
         try {
           await deps.removeTab(warmTabId);
@@ -144,20 +154,20 @@ function createReuseWarmTabForGeminiNavigation(deps: NavigationSwapDeps) {
           // noop
         }
         await deps.ensureReady();
-        const fallback = await deps.createTab({ url: GEMINI_URL, active: true });
+        const fallback = await deps.createTab({ url: homeUrl, active: true });
         const fallbackTabId = fallback?.id;
         if (typeof fallbackTabId === 'number') {
-          await deps.sendQuery(fallbackTabId, queryText);
+          await deps.sendQuery(fallbackTabId, queryText, 1, dispatchEngine);
         }
         return;
       }
     } catch (error) {
-      console.error('处理 Gemini 导航失败:', error);
+      console.error('处理预热导航复用失败:', error);
     }
   };
 }
 
-const reuseWarmTabForGeminiNavigation = createReuseWarmTabForGeminiNavigation({
+const reuseWarmTabForPrewarmNavigation = createReuseWarmTabForPrewarmNavigation({
   acquire: warmService.acquire.bind(warmService),
   ensureReady: warmService.ensureReady.bind(warmService),
   createTab: browser.tabs.create.bind(browser.tabs),
@@ -165,7 +175,7 @@ const reuseWarmTabForGeminiNavigation = createReuseWarmTabForGeminiNavigation({
   removeTab: browser.tabs.remove.bind(browser.tabs),
   addTabRemovedListener: browser.tabs.onRemoved.addListener.bind(browser.tabs.onRemoved),
   removeTabRemovedListener: browser.tabs.onRemoved.removeListener.bind(browser.tabs.onRemoved),
-  sendQuery: sendQueryToGeminiTab,
+  sendQuery: sendQueryToAITab,
 });
 
-export { createReuseWarmTabForGeminiNavigation, reuseWarmTabForGeminiNavigation };
+export { createReuseWarmTabForPrewarmNavigation, reuseWarmTabForPrewarmNavigation };

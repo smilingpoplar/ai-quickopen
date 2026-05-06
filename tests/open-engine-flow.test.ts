@@ -40,14 +40,14 @@ function createImportSafeBrowserMock() {
   return { browserMock, calls };
 }
 
-test('openPrerenderedGemini should discard consumed warm tab before fallback open when send fails', async () => {
+test('openPrewarmedAI should discard consumed warm tab before fallback open when send fails', async () => {
   const originalBrowser = (globalThis as any).browser;
   const { browserMock, calls } = createImportSafeBrowserMock();
   (globalThis as any).browser = browserMock;
 
   try {
-    const moduleUrl = pathToFileURL(path.resolve('src/background/use-cases/open-gemini-flow.ts')).href;
-    const { openPrerenderedGemini } = await import(moduleUrl);
+    const moduleUrl = pathToFileURL(path.resolve('src/background/use-cases/open-engine-flow.ts')).href;
+    const { openPrewarmedAI } = await import(moduleUrl);
     const warmServiceUrl = pathToFileURL(path.resolve('src/background/warm/warm-service.ts')).href;
     const { warmService } = await import(warmServiceUrl);
 
@@ -56,7 +56,7 @@ test('openPrerenderedGemini should discard consumed warm tab before fallback ope
       throw new Error('receiver missing');
     };
 
-    const result = await openPrerenderedGemini('hello');
+    const result = await openPrewarmedAI('hello');
 
     assert.equal(result, 999);
     assert.deepEqual(calls.remove, [701]);

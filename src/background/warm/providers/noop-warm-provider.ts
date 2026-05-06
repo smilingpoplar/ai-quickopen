@@ -8,6 +8,14 @@ class NoopWarmProvider implements WarmProvider {
   async acquire() {
     return null;
   }
+
+  async close() {
+    return;
+  }
+
+  async dispose() {
+    return;
+  }
 }
 
 export { NoopWarmProvider };

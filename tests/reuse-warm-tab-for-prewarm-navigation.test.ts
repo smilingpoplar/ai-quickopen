@@ -53,13 +53,13 @@ function createImportSafeBrowserMock() {
   };
 }
 
-test('reuse warm tab for Gemini navigation should close query tab before sending q', async () => {
+test('reuse warm tab for 预热 navigation should close query tab before sending q', async () => {
   const originalBrowser = (globalThis as any).browser;
   (globalThis as any).browser = createImportSafeBrowserMock();
 
   try {
-    const moduleUrl = `${pathToFileURL(path.resolve('src/background/use-cases/reuse-warm-tab-for-gemini-navigation.ts')).href}?firefox-navigation=${Date.now()}`;
-    const { createReuseWarmTabForGeminiNavigation } = await import(moduleUrl);
+    const moduleUrl = `${pathToFileURL(path.resolve('src/background/use-cases/reuse-warm-tab-for-prewarm-navigation.ts')).href}?firefox-navigation=${Date.now()}`;
+    const { createReuseWarmTabForPrewarmNavigation } = await import(moduleUrl);
     const calls = {
       acquire: [] as number[],
       sendQuery: [] as Array<{ tabId: number; queryText: string }>,
@@ -70,7 +70,7 @@ test('reuse warm tab for Gemini navigation should close query tab before sending
     };
     const removedEvents = createTabRemovedEventBus();
 
-    const reuseWarmTabForGeminiNavigation = createReuseWarmTabForGeminiNavigation({
+    const reuseWarmTabForPrewarmNavigation = createReuseWarmTabForPrewarmNavigation({
       acquire: async (timeoutMs?: number) => {
         calls.acquire.push(timeoutMs ?? -1);
         return { tabId: 701, windowId: 702 };
@@ -97,7 +97,7 @@ test('reuse warm tab for Gemini navigation should close query tab before sending
       },
     });
 
-    await reuseWarmTabForGeminiNavigation({
+    await reuseWarmTabForPrewarmNavigation({
       frameId: 0,
       tabId: 123,
       url: 'https://gemini.google.com/app?q=hello%20firefox',
@@ -114,13 +114,13 @@ test('reuse warm tab for Gemini navigation should close query tab before sending
   }
 });
 
-test('reuse warm tab for Gemini navigation should fallback create tab on send failure', async () => {
+test('reuse warm tab for 预热 navigation should fallback create tab on send failure', async () => {
   const originalBrowser = (globalThis as any).browser;
   (globalThis as any).browser = createImportSafeBrowserMock();
 
   try {
-    const moduleUrl = `${pathToFileURL(path.resolve('src/background/use-cases/reuse-warm-tab-for-gemini-navigation.ts')).href}?firefox-navigation-fail=${Date.now()}`;
-    const { createReuseWarmTabForGeminiNavigation } = await import(moduleUrl);
+    const moduleUrl = `${pathToFileURL(path.resolve('src/background/use-cases/reuse-warm-tab-for-prewarm-navigation.ts')).href}?firefox-navigation-fail=${Date.now()}`;
+    const { createReuseWarmTabForPrewarmNavigation } = await import(moduleUrl);
     const removedEvents = createTabRemovedEventBus();
     const calls = {
       removeTab: [] as number[],
@@ -129,7 +129,7 @@ test('reuse warm tab for Gemini navigation should fallback create tab on send fa
       ensureReady: 0,
     };
 
-    const reuseWarmTabForGeminiNavigation = createReuseWarmTabForGeminiNavigation({
+    const reuseWarmTabForPrewarmNavigation = createReuseWarmTabForPrewarmNavigation({
       acquire: async () => ({ tabId: 701, windowId: 702 }),
       createTab: async (createProperties: any) => {
         calls.createTab.push(createProperties);
@@ -151,7 +151,7 @@ test('reuse warm tab for Gemini navigation should fallback create tab on send fa
       },
     });
 
-    await reuseWarmTabForGeminiNavigation({
+    await reuseWarmTabForPrewarmNavigation({
       frameId: 0,
       tabId: 123,
       url: 'https://gemini.google.com/app?q=hello%20firefox',
@@ -174,8 +174,8 @@ test('safeCloseQueryTab should not treat edit-locked remove errors as already re
   (globalThis as any).browser = createImportSafeBrowserMock();
 
   try {
-    const moduleUrl = `${pathToFileURL(path.resolve('src/background/use-cases/reuse-warm-tab-for-gemini-navigation.ts')).href}?firefox-navigation-edit-locked=${Date.now()}`;
-    const { createReuseWarmTabForGeminiNavigation } = await import(moduleUrl);
+    const moduleUrl = `${pathToFileURL(path.resolve('src/background/use-cases/reuse-warm-tab-for-prewarm-navigation.ts')).href}?firefox-navigation-edit-locked=${Date.now()}`;
+    const { createReuseWarmTabForPrewarmNavigation } = await import(moduleUrl);
     const removedEvents = createTabRemovedEventBus();
     let removeAttempts = 0;
     let getAttempts = 0;
@@ -183,7 +183,7 @@ test('safeCloseQueryTab should not treat edit-locked remove errors as already re
       sendQuery: [] as Array<{ tabId: number; queryText: string }>,
     };
 
-    const reuseWarmTabForGeminiNavigation = createReuseWarmTabForGeminiNavigation({
+    const reuseWarmTabForPrewarmNavigation = createReuseWarmTabForPrewarmNavigation({
       acquire: async () => ({ tabId: 701, windowId: 702 }),
       createTab: async () => ({ id: 801 }),
       ensureReady: async () => {},
@@ -206,7 +206,7 @@ test('safeCloseQueryTab should not treat edit-locked remove errors as already re
       },
     });
 
-    await reuseWarmTabForGeminiNavigation({
+    await reuseWarmTabForPrewarmNavigation({
       frameId: 0,
       tabId: 123,
       url: 'https://gemini.google.com/app?q=hello%20firefox',
@@ -225,8 +225,8 @@ test('safeCloseQueryTab should treat timeout + missing tab as closed', async () 
   (globalThis as any).browser = createImportSafeBrowserMock();
 
   try {
-    const moduleUrl = `${pathToFileURL(path.resolve('src/background/use-cases/reuse-warm-tab-for-gemini-navigation.ts')).href}?firefox-navigation-timeout-missing=${Date.now()}`;
-    const { createReuseWarmTabForGeminiNavigation } = await import(moduleUrl);
+    const moduleUrl = `${pathToFileURL(path.resolve('src/background/use-cases/reuse-warm-tab-for-prewarm-navigation.ts')).href}?firefox-navigation-timeout-missing=${Date.now()}`;
+    const { createReuseWarmTabForPrewarmNavigation } = await import(moduleUrl);
     const removedEvents = createTabRemovedEventBus();
     let getAttempts = 0;
     const calls = {
@@ -234,7 +234,7 @@ test('safeCloseQueryTab should treat timeout + missing tab as closed', async () 
       sendQuery: [] as Array<{ tabId: number; queryText: string }>,
     };
 
-    const reuseWarmTabForGeminiNavigation = createReuseWarmTabForGeminiNavigation({
+    const reuseWarmTabForPrewarmNavigation = createReuseWarmTabForPrewarmNavigation({
       acquire: async () => ({ tabId: 701, windowId: 702 }),
       createTab: async () => ({ id: 801 }),
       ensureReady: async () => {},
@@ -254,7 +254,7 @@ test('safeCloseQueryTab should treat timeout + missing tab as closed', async () 
       },
     });
 
-    await reuseWarmTabForGeminiNavigation({
+    await reuseWarmTabForPrewarmNavigation({
       frameId: 0,
       tabId: 123,
       url: 'https://gemini.google.com/app?q=hello%20firefox',
@@ -273,15 +273,15 @@ test('safeCloseQueryTab should retry remove once when tab still exists after tim
   (globalThis as any).browser = createImportSafeBrowserMock();
 
   try {
-    const moduleUrl = `${pathToFileURL(path.resolve('src/background/use-cases/reuse-warm-tab-for-gemini-navigation.ts')).href}?firefox-navigation-timeout-retry=${Date.now()}`;
-    const { createReuseWarmTabForGeminiNavigation } = await import(moduleUrl);
+    const moduleUrl = `${pathToFileURL(path.resolve('src/background/use-cases/reuse-warm-tab-for-prewarm-navigation.ts')).href}?firefox-navigation-timeout-retry=${Date.now()}`;
+    const { createReuseWarmTabForPrewarmNavigation } = await import(moduleUrl);
     const removedEvents = createTabRemovedEventBus();
     let removeAttempts = 0;
     const calls = {
       sendQuery: [] as Array<{ tabId: number; queryText: string }>,
     };
 
-    const reuseWarmTabForGeminiNavigation = createReuseWarmTabForGeminiNavigation({
+    const reuseWarmTabForPrewarmNavigation = createReuseWarmTabForPrewarmNavigation({
       acquire: async () => ({ tabId: 701, windowId: 702 }),
       createTab: async () => ({ id: 801 }),
       ensureReady: async () => {},
@@ -300,7 +300,7 @@ test('safeCloseQueryTab should retry remove once when tab still exists after tim
       },
     });
 
-    await reuseWarmTabForGeminiNavigation({
+    await reuseWarmTabForPrewarmNavigation({
       frameId: 0,
       tabId: 123,
       url: 'https://gemini.google.com/app?q=hello%20firefox',

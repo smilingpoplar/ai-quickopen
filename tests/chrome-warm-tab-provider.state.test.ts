@@ -40,7 +40,7 @@ function createBrowserMock({
       create: async (config: any) => {
         if (createTab) return createTab(config);
         queueMicrotask(() => {
-          listeners.onMessage?.({ type: 'GEMINI_CONTENT_READY' }, { tab: { id: 1001 } });
+          listeners.onMessage?.({ type: 'ENGINE_CONTENT_READY', engine: 'gemini' }, { tab: { id: 1001 } });
         });
         return {
           id: 1001,

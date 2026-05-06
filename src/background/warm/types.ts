@@ -9,4 +9,6 @@ export type WarmResourceRecord = WarmItem & { kind: WarmResourceKind };
 export interface WarmProvider {
   ensureReady(): Promise<void>;
   acquire(timeoutMs?: number): Promise<WarmItem | null>;
+  close(): Promise<void>;
+  dispose(): Promise<void>;
 }

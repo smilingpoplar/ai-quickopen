@@ -1,14 +1,15 @@
-# Gemini QuickOpen
+# AI QuickOpen
 
-- Pre-warm Gemini in the background to speed up opening
-- Click toolbar icon → Send current webpage to Gemini for analysis
-- In the extension options, add Prompt, URL rules, and CSS selector (optional). If the CSS selector is empty, the URL will be sent; if not empty, text will be extracted simultaneously.
+- Click toolbar icon -> Send current webpage to AI website for analysis
+- Support `?q={query}` query parameter for AI website search
+- Pre-warm AI websites (like Gemini) in the background to speed up opening
+- In the extension options, add URL rules, CSS selector (optional), and Prompt. If the CSS selector is empty, the URL will be sent; if not empty, text will be extracted from the selected element.
 
 ## Install
 
 ```bash
-git clone https://github.com/smilingpoplar/gemini-quickopen.git
-cd gemini-quickopen
+git clone https://github.com/smilingpoplar/ai-quickopen.git
+cd ai-quickopen
 pnpm install
 pnpm build
 ```
