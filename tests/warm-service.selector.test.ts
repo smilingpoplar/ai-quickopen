@@ -24,7 +24,7 @@ function createImportSafeBrowserMock(runtimeUrl: string, withTabHide = false) {
   };
 }
 
-test('warm service should select chrome popup provider in chrome', async () => {
+test('warm service should select chrome warm tab provider in chrome', async () => {
   const originalBrowser = (globalThis as any).browser;
   (globalThis as any).browser = createImportSafeBrowserMock('chrome-extension://test-extension/');
 
@@ -36,7 +36,7 @@ test('warm service should select chrome popup provider in chrome', async () => {
       isFirefox: false,
       canHideTabs: false,
     });
-    assert.equal(provider.constructor.name, 'ChromePopupWarmProvider');
+    assert.equal(provider.constructor.name, 'ChromeWarmTabProvider');
   } finally {
     (globalThis as any).browser = originalBrowser;
   }

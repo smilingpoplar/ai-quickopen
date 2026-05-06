@@ -12,7 +12,6 @@ export const STORAGE_KEY_KIND = 'prerenderKind';
 export const STORAGE_KEY_TAB_PERSIST = 'prerenderTabIdPersist';
 export const STORAGE_KEY_WINDOW_PERSIST = 'prerenderWindowIdPersist';
 export const STORAGE_KEY_KIND_PERSIST = 'prerenderKindPersist';
-export const STORAGE_KEY_WARM_POPUP_SUPPRESS_UNTIL = 'warmPopupSuppressUntil';
 
 export const WINDOW_ID_NONE = browser.windows?.WINDOW_ID_NONE ?? -1;
 

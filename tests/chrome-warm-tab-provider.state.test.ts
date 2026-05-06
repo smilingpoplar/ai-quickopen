@@ -4,17 +4,13 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 function createBrowserMock({
-  popupWindows,
   normalWindows,
-  createWindow,
+  createTab,
 }: {
-  popupWindows: any[];
   normalWindows: any[];
-  createWindow?: (config: any) => any;
+  createTab?: (config: any) => any;
 }) {
-  const listeners: Record<string, any> = {
-    onMessage: null,
-  };
+  const listeners: Record<string, any> = { onMessage: null };
 
   return {
     runtime: {
@@ -41,8 +37,24 @@ function createBrowserMock({
       onRemoved: {
         addListener: () => {},
       },
-      get: async (tabId: number) => ({ id: tabId }),
+      create: async (config: any) => {
+        if (createTab) return createTab(config);
+        queueMicrotask(() => {
+          listeners.onMessage?.({ type: 'GEMINI_CONTENT_READY' }, { tab: { id: 1001 } });
+        });
+        return {
+          id: 1001,
+          windowId: config.windowId ?? 1,
+          url: config.url ?? 'about:blank',
+        };
+      },
+      get: async (tabId: number) => ({ id: tabId, windowId: 1 }),
+      update: async () => {},
       move: async () => {},
+      group: async () => 11,
+      ungroup: async () => {},
+    },
+    tabGroups: {
       update: async () => {},
     },
     windows: {
@@ -57,23 +69,9 @@ function createBrowserMock({
         if (windowTypes?.includes('normal')) {
           return normalWindows;
         }
-
-        if (windowTypes?.includes('popup')) {
-          return popupWindows;
-        }
-
         return [];
       },
-      create: async (config: any) => {
-        if (createWindow) return createWindow(config);
-        queueMicrotask(() => {
-          listeners.onMessage?.({ type: 'GEMINI_CONTENT_READY' }, { tab: { id: 1001 } });
-        });
-        return {
-          id: 1000,
-          tabs: [{ id: 1001, url: config.url ?? 'about:blank' }],
-        };
-      },
+      create: async () => ({ id: 1000, tabs: [{ id: 1001, windowId: 1000, url: 'https://gemini.google.com/app' }] }),
       update: async () => {},
       remove: async () => {},
       get: async (windowId: number) => ({ id: windowId }),
@@ -81,25 +79,17 @@ function createBrowserMock({
   };
 }
 
-test('state should become ready after fill adopts warm popup', async () => {
+test('state should become ready after fill creates warm tab', async () => {
   const originalBrowser = (globalThis as any).browser;
 
   (globalThis as any).browser = createBrowserMock({
     normalWindows: [{ id: 1, focused: true }],
-    popupWindows: [{
-      id: 900,
-      left: 10000,
-      top: 10000,
-      width: 1,
-      height: 1,
-      tabs: [{ id: 901, url: 'https://gemini.google.com/app' }],
-    }],
   });
 
   try {
-    const moduleUrl = `${pathToFileURL(path.resolve('src/background/warm/providers/chrome-popup-warm-provider.ts')).href}?state-ready=${Date.now()}`;
-    const { ChromePopupWarmProvider } = await import(moduleUrl);
-    const provider = new ChromePopupWarmProvider();
+    const moduleUrl = `${pathToFileURL(path.resolve('src/background/warm/providers/chrome-warm-tab-provider.ts')).href}?state-ready=${Date.now()}`;
+    const { ChromeWarmTabProvider } = await import(moduleUrl);
+    const provider = new ChromeWarmTabProvider();
     await provider.ensureReady();
     assert.equal(provider.state, 'ready');
   } finally {
@@ -112,20 +102,25 @@ test('state should become recovering right after dequeue consumes a warm item', 
 
   (globalThis as any).browser = createBrowserMock({
     normalWindows: [{ id: 1, focused: true }],
-    popupWindows: [{
-      id: 900,
-      left: 10000,
-      top: 10000,
-      width: 1,
-      height: 1,
-      tabs: [{ id: 901, url: 'https://gemini.google.com/app' }],
-    }],
+    createTab: async (config: any) => {
+      return {
+        id: 901,
+        windowId: config.windowId ?? 1,
+        url: config.url ?? 'https://gemini.google.com/app',
+      };
+    },
+  });
+
+  (globalThis as any).browser.storage.session.get = async () => ({
+    prerenderKind: 'chrome-warm-tab',
+    prerenderTabId: 901,
+    prerenderWindowId: 1,
   });
 
   try {
-    const moduleUrl = `${pathToFileURL(path.resolve('src/background/warm/providers/chrome-popup-warm-provider.ts')).href}?state-recovering=${Date.now()}`;
-    const { ChromePopupWarmProvider } = await import(moduleUrl);
-    const provider = new ChromePopupWarmProvider();
+    const moduleUrl = `${pathToFileURL(path.resolve('src/background/warm/providers/chrome-warm-tab-provider.ts')).href}?state-recovering=${Date.now()}`;
+    const { ChromeWarmTabProvider } = await import(moduleUrl);
+    const provider = new ChromeWarmTabProvider();
     await provider.ensureReady();
     const consumed = await provider.acquire(20);
     assert.equal(consumed?.tabId, 901);
@@ -140,14 +135,13 @@ test('state should return to idle when fill cannot create a usable warm item', a
 
   (globalThis as any).browser = createBrowserMock({
     normalWindows: [{ id: 1, focused: true }],
-    popupWindows: [],
-    createWindow: async () => ({ id: 1000, tabs: [] }),
+    createTab: async () => ({ id: undefined, windowId: 1, url: 'https://gemini.google.com/app' }),
   });
 
   try {
-    const moduleUrl = `${pathToFileURL(path.resolve('src/background/warm/providers/chrome-popup-warm-provider.ts')).href}?state-idle=${Date.now()}`;
-    const { ChromePopupWarmProvider } = await import(moduleUrl);
-    const provider = new ChromePopupWarmProvider();
+    const moduleUrl = `${pathToFileURL(path.resolve('src/background/warm/providers/chrome-warm-tab-provider.ts')).href}?state-idle=${Date.now()}`;
+    const { ChromeWarmTabProvider } = await import(moduleUrl);
+    const provider = new ChromeWarmTabProvider();
     await provider.ensureReady();
     assert.equal(provider.state, 'idle');
   } finally {

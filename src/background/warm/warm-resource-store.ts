@@ -16,7 +16,7 @@ class WarmResourceStore {
   }
 
   _normalizeRecord(kind: unknown, tabId: unknown, windowId: unknown): WarmResourceRecord | null {
-    if (kind !== 'chrome-popup' && kind !== 'firefox-hidden-tab') {
+    if (kind !== 'chrome-warm-tab' && kind !== 'firefox-hidden-tab') {
       return null;
     }
 
@@ -37,7 +37,7 @@ class WarmResourceStore {
     }
 
     return {
-      kind: 'chrome-popup',
+      kind: 'chrome-warm-tab',
       tabId,
       windowId,
     };

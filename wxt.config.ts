@@ -5,6 +5,9 @@ export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: ({ browser }) => {
     const permissions = ['activeTab', 'storage', 'scripting', 'webNavigation'];
+    if (browser === 'chrome') {
+      permissions.push('tabGroups');
+    }
     if (browser === 'firefox') {
       permissions.push('tabHide');
     }

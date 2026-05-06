@@ -2,7 +2,7 @@ export type WarmItem = { tabId: number; windowId: number | null };
 
 export type WarmState = 'idle' | 'warming' | 'ready' | 'consuming' | 'recovering';
 
-export type WarmResourceKind = 'chrome-popup' | 'firefox-hidden-tab';
+export type WarmResourceKind = 'chrome-warm-tab' | 'firefox-hidden-tab';
 
 export type WarmResourceRecord = WarmItem & { kind: WarmResourceKind };
 

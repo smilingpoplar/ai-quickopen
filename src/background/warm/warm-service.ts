@@ -1,5 +1,5 @@
 import { CAN_HIDE_TABS, IS_CHROME, IS_FIREFOX } from '../constants';
-import { ChromePopupWarmProvider } from './providers/chrome-popup-warm-provider';
+import { ChromeWarmTabProvider } from './providers/chrome-warm-tab-provider';
 import { FirefoxHiddenTabWarmProvider } from './providers/firefox-hidden-tab-warm-provider';
 import { NoopWarmProvider } from './providers/noop-warm-provider';
 import type { WarmItem, WarmProvider, WarmState } from './types';
@@ -18,7 +18,7 @@ function createWarmProvider(
   },
 ): WarmProvider {
   if (capabilities.isChrome) {
-    return new ChromePopupWarmProvider();
+    return new ChromeWarmTabProvider();
   }
 
   if (capabilities.isFirefox && capabilities.canHideTabs) {
