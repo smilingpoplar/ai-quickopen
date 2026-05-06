@@ -80,8 +80,8 @@ test('when only warm popup exists, focus should still trigger normal window crea
           return [
             {
               id: 900,
-              left: -10000,
-              top: 0,
+              left: 10000,
+              top: 10000,
               width: 1,
               height: 1,
               tabs: [{ id: 901, url: 'https://gemini.google.com/app' }],
@@ -224,8 +224,8 @@ test('closing the last normal window should not immediately auto-reopen a normal
           return [
             {
               id: 900,
-              left: -10000,
-              top: 0,
+              left: 10000,
+              top: 10000,
               width: 1,
               height: 1,
               tabs: [{ id: 901, url: 'https://gemini.google.com/app' }],
@@ -404,8 +404,8 @@ test('closing the last normal window should still be suppressed after service wo
           return [
             {
               id: 900,
-              left: -10000,
-              top: 0,
+              left: 10000,
+              top: 10000,
               width: 1,
               height: 1,
               tabs: [{ id: 901, url: 'https://gemini.google.com/app' }],

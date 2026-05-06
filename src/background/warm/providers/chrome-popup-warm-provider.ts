@@ -259,9 +259,8 @@ class ChromePopupWarmProvider extends BaseWarmProvider {
           const firstTab = windowInfo.tabs?.[0];
           const tabUrl = firstTab?.url || '';
           const isGeminiTab = tabUrl.startsWith(GEMINI_URL);
-          const isOffscreenShape = (windowInfo.left ?? 0) <= -1000
-            && (windowInfo.width ?? 0) <= 5
-            && (windowInfo.height ?? 0) <= 5;
+          const isOffscreenShape = (windowInfo.left ?? 0) === 10000
+            && (windowInfo.top ?? 0) === 10000;
           const tabId = firstTab?.id;
           const windowId = windowInfo.id;
 
@@ -459,8 +458,8 @@ class ChromePopupWarmProvider extends BaseWarmProvider {
       const win = await createWindow({
         url: GEMINI_URL,
         type: 'popup',
-        left: -10000,
-        top: 0,
+        left: 10000,
+        top: 10000,
         width: 1,
         height: 1,
         focused: false
