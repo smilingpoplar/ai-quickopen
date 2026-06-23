@@ -20,7 +20,7 @@ export default defineConfig({
 
     return {
       name: 'AI 快捷打开',
-      version: '1.2.0',
+      version: '1.3.0',
       description: '点击插件图标，将当前网页发送到AI引擎分析',
       permissions,
       host_permissions: ['https://gemini.google.com/*', 'https://grok.com/*'],

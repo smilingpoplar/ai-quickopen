@@ -100,7 +100,7 @@ test('reuse warm tab for 预热 navigation should close query tab before sending
     await reuseWarmTabForPrewarmNavigation({
       frameId: 0,
       tabId: 123,
-      url: 'https://gemini.google.com/app?q=hello%20firefox',
+      url: 'https://gemini.google.com/?q=hello%20firefox',
     });
 
     assert.deepEqual(calls.acquire, [2000]);
@@ -154,7 +154,7 @@ test('reuse warm tab for 预热 navigation should fallback create tab on send fa
     await reuseWarmTabForPrewarmNavigation({
       frameId: 0,
       tabId: 123,
-      url: 'https://gemini.google.com/app?q=hello%20firefox',
+      url: 'https://gemini.google.com/?q=hello%20firefox',
     });
 
     assert.deepEqual(calls.removeTab, [123, 701]);
@@ -162,7 +162,7 @@ test('reuse warm tab for 预热 navigation should fallback create tab on send fa
       { tabId: 701, queryText: 'hello firefox' },
       { tabId: 801, queryText: 'hello firefox' },
     ]);
-    assert.deepEqual(calls.createTab, [{ url: 'https://gemini.google.com/app', active: true }]);
+    assert.deepEqual(calls.createTab, [{ url: 'https://gemini.google.com/', active: true }]);
     assert.equal(calls.ensureReady, 1);
   } finally {
     (globalThis as any).browser = originalBrowser;
@@ -209,7 +209,7 @@ test('safeCloseQueryTab should not treat edit-locked remove errors as already re
     await reuseWarmTabForPrewarmNavigation({
       frameId: 0,
       tabId: 123,
-      url: 'https://gemini.google.com/app?q=hello%20firefox',
+      url: 'https://gemini.google.com/?q=hello%20firefox',
     });
 
     assert.equal(removeAttempts, 2);
@@ -257,7 +257,7 @@ test('safeCloseQueryTab should treat timeout + missing tab as closed', async () 
     await reuseWarmTabForPrewarmNavigation({
       frameId: 0,
       tabId: 123,
-      url: 'https://gemini.google.com/app?q=hello%20firefox',
+      url: 'https://gemini.google.com/?q=hello%20firefox',
     });
 
     assert.deepEqual(calls.removeTab, [123]);
@@ -303,7 +303,7 @@ test('safeCloseQueryTab should retry remove once when tab still exists after tim
     await reuseWarmTabForPrewarmNavigation({
       frameId: 0,
       tabId: 123,
-      url: 'https://gemini.google.com/app?q=hello%20firefox',
+      url: 'https://gemini.google.com/?q=hello%20firefox',
     });
 
     assert.equal(removeAttempts, 2);

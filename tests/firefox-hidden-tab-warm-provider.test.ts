@@ -110,7 +110,7 @@ test('firefox provider should create hidden tab and reveal it on acquire', async
 
     assert.equal(item?.tabId, 701);
     assert.deepEqual(calls.create[0], {
-      url: 'https://gemini.google.com/app',
+      url: 'https://gemini.google.com/',
       active: false,
     });
     assert.deepEqual(calls.hide, [701]);

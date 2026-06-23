@@ -2,7 +2,7 @@ import type { AIEngine } from '../shared/types';
 import { DEFAULT_AI_ENGINE } from '../shared/constants';
 
 const KNOWN_ENGINE_HOME_URLS: Record<string, string> = {
-  gemini: 'https://gemini.google.com/app',
+  gemini: 'https://gemini.google.com/',
   grok: 'https://grok.com/',
 };
 

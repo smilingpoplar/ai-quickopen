@@ -71,7 +71,7 @@ function createBrowserMock({
         }
         return [];
       },
-      create: async () => ({ id: 1000, tabs: [{ id: 1001, windowId: 1000, url: 'https://gemini.google.com/app' }] }),
+      create: async () => ({ id: 1000, tabs: [{ id: 1001, windowId: 1000, url: 'https://gemini.google.com/' }] }),
       update: async () => {},
       remove: async () => {},
       get: async (windowId: number) => ({ id: windowId }),
@@ -106,7 +106,7 @@ test('state should become recovering right after dequeue consumes a warm item', 
       return {
         id: 901,
         windowId: config.windowId ?? 1,
-        url: config.url ?? 'https://gemini.google.com/app',
+        url: config.url ?? 'https://gemini.google.com/',
       };
     },
   });
@@ -135,7 +135,7 @@ test('state should return to idle when fill cannot create a usable warm item', a
 
   (globalThis as any).browser = createBrowserMock({
     normalWindows: [{ id: 1, focused: true }],
-    createTab: async () => ({ id: undefined, windowId: 1, url: 'https://gemini.google.com/app' }),
+    createTab: async () => ({ id: undefined, windowId: 1, url: 'https://gemini.google.com/' }),
   });
 
   try {

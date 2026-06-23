@@ -47,32 +47,60 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function simulateInput(element: Element, value: string): void {
-  (element as HTMLElement).textContent = value;
-  element.dispatchEvent(new InputEvent('input', { bubbles: true }));
+type EngineActions = {
+  simulateInput: (element: Element, value: string) => void;
+  simulateEnter: (element: Element) => void;
+};
+
+const defaultActions: EngineActions = {
+  simulateInput(element: Element, value: string) {
+    (element as HTMLElement).textContent = value;
+    element.dispatchEvent(new InputEvent('input', { bubbles: true }));
+  },
+  simulateEnter(element: Element) {
+    element.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }),
+    );
+  },
+};
+
+// Gemini 的 <rich-textarea> 自定义元素需要 document.execCommand('insertText')
+// 且 Enter 需派发在 <rich-textarea> 上而非内部的 contenteditable div
+const engineActionsMap: Record<string, EngineActions> = {
+  gemini: {
+    ...defaultActions,
+    simulateInput(element: Element, value: string) {
+      document.execCommand('insertText', false, value);
+      element.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    },
+    simulateEnter(_element: Element) {
+      const richTextarea = document.querySelector('rich-textarea');
+      if (richTextarea) {
+        richTextarea.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }),
+        );
+      }
+    },
+  },
+};
+
+function getEngineActions(engine: AIEngine): EngineActions {
+  return engineActionsMap[engine] ?? defaultActions;
 }
 
-function simulateEnter(element: Element): void {
-  element.dispatchEvent(
-    new KeyboardEvent('keydown', {
-      key: 'Enter',
-      keyCode: 13,
-      bubbles: true,
-    }),
-  );
-}
-
-async function runAutoSubmit(query: string): Promise<boolean> {
+async function runAutoSubmit(query: string, engine: AIEngine): Promise<boolean> {
   if (!query) return false;
 
   try {
     const editor = await waitForElement(getEditorSelector(), 15000);
-
+    await delay(500);
     (editor as HTMLElement).focus();
     await delay(100);
-    simulateInput(editor, query);
+
+    const actions = getEngineActions(engine);
+    actions.simulateInput(editor, query);
     await delay(100);
-    simulateEnter(editor);
+    actions.simulateEnter(editor);
     return true;
   } catch (error) {
     console.error('自动发送失败:', error);
@@ -95,6 +123,6 @@ export default function installEngineMessageListener(): void {
       return undefined;
     }
 
-    return runAutoSubmit(message.queryText || '').then((ok) => ({ ok }));
+    return runAutoSubmit(message.queryText || '', engine).then((ok) => ({ ok }));
   });
 }

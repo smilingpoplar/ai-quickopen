@@ -60,7 +60,7 @@ test('openPrewarmedAI should discard consumed warm tab before fallback open when
 
     assert.equal(result, 999);
     assert.deepEqual(calls.remove, [701]);
-    assert.deepEqual(calls.create, [{ url: 'https://gemini.google.com/app', active: true }]);
+    assert.deepEqual(calls.create, [{ url: 'https://gemini.google.com/', active: true }]);
   } finally {
     (globalThis as any).browser = originalBrowser;
   }

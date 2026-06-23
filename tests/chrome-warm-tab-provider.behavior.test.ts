@@ -83,7 +83,7 @@ test('should create warm tab in normal window and collapse its tab group', async
     await provider.ensureReady();
 
     assert.deepEqual(calls.tabsCreate[0], {
-      url: 'https://gemini.google.com/app',
+      url: 'https://gemini.google.com/',
       active: false,
       windowId: 1,
       index: 0,
@@ -124,7 +124,7 @@ test('should reuse dedicated warm tab group when it already exists', async () =>
         queueMicrotask(() => {
           listeners.onMessage?.({ type: 'ENGINE_CONTENT_READY', engine: 'gemini' }, { tab: { id: 3001 } });
         });
-        return { id: 3001, windowId: 1, url: 'https://gemini.google.com/app' };
+        return { id: 3001, windowId: 1, url: 'https://gemini.google.com/' };
       },
       group: async (config: any) => {
         calls.tabsGroup.push(config);
@@ -209,7 +209,7 @@ test('should ungroup warm tab before activating it on consume', async () => {
         queueMicrotask(() => {
           listeners.onMessage?.({ type: 'ENGINE_CONTENT_READY', engine: 'gemini' }, { tab: { id: 777 } });
         });
-        return { id: 777, windowId: 5, url: 'https://gemini.google.com/app' };
+        return { id: 777, windowId: 5, url: 'https://gemini.google.com/' };
       },
       group: async () => 33,
       ungroup: async (tabId: number) => { calls.tabsUngroup.push(tabId); },
